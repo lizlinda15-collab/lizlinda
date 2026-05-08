@@ -2,356 +2,575 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
+import plotly.graph_objects as go
+from datetime import datetime, timedelta
 
 # Page configuration
-st.set_page_config(page_title="Nova University Dashboard", layout="wide")
+st.set_page_config(page_title="Liz Supermarket Sales Dashboard", layout="wide")
 
 # Dashboard title
-st.title("🏛️ Nova University Dashboard")
-st.markdown("#### Institutional Analytics | 2023 – 2025")
+st.title("🛒 Liz Supermarket Sales Analysis Dashboard")
+st.markdown("#### Comprehensive Sales Analytics | 2023 – 2025")
 st.markdown("---")
 
-# Load data - Simplified
+# Load data
 @st.cache_data
-def load_data():
+def load_sales_data():
     np.random.seed(42)
     
-    # Departments (15 total - bigger than Clinton)
-    departments = [
-        "Business", "Engineering", "Computing", "Law", "Medicine",
-        "Nursing", "Education", "Humanities", "Social Sciences", 
-        "Pharmacy", "Architecture", "Journalism", "Agriculture",
-        "Dentistry", "Veterinary Medicine"
-    ]
+    # Date range: 3 years of daily data
+    dates = pd.date_range(start="2023-01-01", end="2025-12-31", freq="D")
     
-    years = [2023, 2024, 2025]
+    # Branches
+    branches = ["Downtown", "Westlands", "Eastlands", "South B", "Karen", "Thika Road"]
+    
+    # Product categories
+    categories = {
+        "Fresh Produce": ["Tomatoes", "Onions", "Potatoes", "Cabbages", "Kales", "Carrots", "Spinach"],
+        "Dairy & Eggs": ["Milk", "Yogurt", "Cheese", "Butter", "Eggs", "Cream"],
+        "Meat & Seafood": ["Beef", "Chicken", "Pork", "Fish", "Sausages", "Bacon"],
+        "Beverages": ["Soda", "Juice", "Water", "Tea", "Coffee", "Energy Drinks"],
+        "Snacks": ["Chips", "Biscuits", "Candy", "Chocolate", "Popcorn", "Nuts"],
+        "Household": ["Detergent", "Soap", "Tissue", "Cleaning", "Batteries", "Light Bulbs"],
+        "Personal Care": ["Shampoo", "Soap Bar", "Toothpaste", "Deodorant", "Lotion", "Razor"],
+        "Grains & Cereals": ["Rice", "Maize Flour", "Wheat Flour", "Bread", "Pasta", "Beans"],
+        "Frozen Foods": ["Frozen Veg", "Ice Cream", "Frozen Meat", "Fries", "Pizza"],
+        "Health & Baby": ["Diapers", "Baby Food", "Vitamins", "First Aid", "Sanitary Pads"]
+    }
+    
+    # Payment methods
+    payment_methods = ["Cash", "M-Pesa", "Card", "Bank Transfer"]
     
     data = []
     
-    for year in years:
-        growth = 1 + (year - 2023) * 0.12
+    for date in dates:
+        year = date.year
+        month = date.month
+        day_of_week = date.dayofweek
+        is_weekend = day_of_week >= 5
         
-        for dept in departments:
-            # Students
-            if dept in ["Business", "Computing"]:
-                students = int(2000 * growth * np.random.uniform(0.9, 1.1))
-            elif dept in ["Medicine", "Nursing"]:
-                students = int(1200 * growth * np.random.uniform(0.9, 1.1))
+        # Seasonal factors
+        if month == 12:  # December peak
+            season_factor = 1.5
+        elif month == 1:  # January low
+            season_factor = 0.7
+        elif month == 8:  # August moderate
+            season_factor = 0.9
+        else:
+            season_factor = 1.0
+        
+        # Yearly growth
+        year_factor = 1 + (year - 2023) * 0.12  # 12% annual growth
+        
+        for branch in branches:
+            # Branch popularity factor
+            if branch in ["Downtown", "Westlands"]:
+                branch_factor = 1.3
+            elif branch in ["Karen", "Thika Road"]:
+                branch_factor = 1.1
             else:
-                students = int(700 * growth * np.random.uniform(0.9, 1.1))
+                branch_factor = 0.9
             
-            # Completion rate
-            if dept in ["Medicine", "Nursing"]:
-                completion = np.random.uniform(85, 95) + (year - 2023) * 1.5
-            elif dept in ["Business", "Computing"]:
-                completion = np.random.uniform(80, 90) + (year - 2023) * 2
-            else:
-                completion = np.random.uniform(75, 88) + (year - 2023) * 2
-            
-            completion = min(completion, 98)
-            
-            # Graduates
-            graduating = int(students * np.random.uniform(0.22, 0.28))
-            
-            # Learning mode
-            if year == 2023:
-                mode = np.random.choice(["Physical", "Virtual", "Blended"], p=[0.7, 0.15, 0.15])
-            elif year == 2024:
-                mode = np.random.choice(["Physical", "Virtual", "Blended"], p=[0.55, 0.25, 0.20])
-            else:
-                mode = np.random.choice(["Physical", "Virtual", "Blended"], p=[0.4, 0.35, 0.25])
-            
-            data.append({
-                "Year": year,
-                "Department": dept,
-                "Total_Students": students,
-                "Graduating_Students": graduating,
-                "Completion_Rate": round(completion, 1),
-                "Learning_Mode": mode,
-                "Student_Satisfaction": round(np.random.uniform(3.2, 4.8), 1)
-            })
+            for category, products in categories.items():
+                for product in products[:3]:  # Limit to 3 products per category for performance
+                    # Base price per product
+                    if product in ["Milk", "Beef", "Rice"]:
+                        price = np.random.uniform(100, 300)
+                    elif product in ["Tomatoes", "Onions", "Potatoes"]:
+                        price = np.random.uniform(50, 150)
+                    else:
+                        price = np.random.uniform(30, 200)
+                    
+                    # Volume sold
+                    if category == "Fresh Produce":
+                        base_volume = np.random.uniform(20, 100)
+                    elif category in ["Dairy & Eggs", "Beverages"]:
+                        base_volume = np.random.uniform(15, 80)
+                    else:
+                        base_volume = np.random.uniform(5, 50)
+                    
+                    # Apply factors
+                    volume = base_volume * season_factor * year_factor * branch_factor
+                    if is_weekend:
+                        volume *= 1.3  # Weekend boost
+                    
+                    volume = int(volume)
+                    sales_amount = volume * price
+                    
+                    # Payment method distribution (cash decreasing over years)
+                    if year <= 2023:
+                        payment = np.random.choice(payment_methods, p=[0.5, 0.3, 0.15, 0.05])
+                    elif year == 2024:
+                        payment = np.random.choice(payment_methods, p=[0.4, 0.35, 0.2, 0.05])
+                    else:
+                        payment = np.random.choice(payment_methods, p=[0.3, 0.4, 0.25, 0.05])
+                    
+                    data.append({
+                        "Date": date,
+                        "Year": year,
+                        "Month": date.strftime("%b"),
+                        "Weekday": date.strftime("%A"),
+                        "Is_Weekend": is_weekend,
+                        "Branch": branch,
+                        "Category": category,
+                        "Product": product,
+                        "Quantity": volume,
+                        "Unit_Price": round(price, 2),
+                        "Sales_Amount": round(sales_amount, 2),
+                        "Payment_Method": payment,
+                        "Payment_Type": "Cash" if payment == "Cash" else "Digital"
+                    })
     
     return pd.DataFrame(data)
 
-# Financial data - Simplified
-@st.cache_data
-def load_financial_data():
-    years = [2023, 2024, 2025]
-    
-    financial_data = []
-    
-    for year in years:
-        growth = 1 + (year - 2023) * 0.12
-        
-        tuition = 800 * growth * np.random.uniform(0.95, 1.05)
-        research = 150 * growth * np.random.uniform(0.9, 1.1)
-        donations = 50 * growth * np.random.uniform(0.8, 1.2)
-        other = 200 * growth * np.random.uniform(0.9, 1.1)
-        
-        total_revenue = tuition + research + donations + other
-        
-        salaries = 450 * growth * np.random.uniform(0.95, 1.05)
-        infrastructure = 150 * growth * np.random.uniform(0.9, 1.1)
-        operations = 200 * growth * np.random.uniform(0.95, 1.05)
-        
-        total_expenses = salaries + infrastructure + operations
-        profit = total_revenue - total_expenses
-        
-        financial_data.append({
-            "Year": year,
-            "Tuition_Revenue": round(tuition, 1),
-            "Research_Grants": round(research, 1),
-            "Donations": round(donations, 1),
-            "Other_Income": round(other, 1),
-            "Total_Revenue": round(total_revenue, 1),
-            "Salaries": round(salaries, 1),
-            "Infrastructure": round(infrastructure, 1),
-            "Operations": round(operations, 1),
-            "Total_Expenses": round(total_expenses, 1),
-            "Net_Profit": round(profit, 1)
-        })
-    
-    return pd.DataFrame(financial_data)
-
 # Load data
-df = load_data()
-df_finance = load_financial_data()
+df = load_sales_data()
+
+# Calculate summary metrics
+total_sales = df["Sales_Amount"].sum()
+total_quantity = df["Quantity"].sum()
+avg_transaction = df.groupby("Date")["Sales_Amount"].sum().mean()
+total_customers = df.groupby("Date").size().sum()
 
 # Sidebar Filters
 st.sidebar.header("🔍 Filter Dashboard")
 
-years = st.sidebar.multiselect("Select Year(s)", df["Year"].unique(), default=[2023, 2024, 2025])
-df_filtered = df[df["Year"].isin(years)]
+# Date range filter
+min_date = df["Date"].min()
+max_date = df["Date"].max()
+date_range = st.sidebar.date_input(
+    "Select Date Range",
+    value=(min_date, max_date),
+    min_value=min_date,
+    max_value=max_date
+)
 
-depts = st.sidebar.multiselect("Select Department(s)", df["Department"].unique(), default=df["Department"].unique()[:6])
-df_filtered = df_filtered[df_filtered["Department"].isin(depts)]
+if len(date_range) == 2:
+    start_date, end_date = date_range
+    filtered_df = df[(df["Date"] >= pd.to_datetime(start_date)) & (df["Date"] <= pd.to_datetime(end_date))]
+else:
+    filtered_df = df.copy()
 
-modes = st.sidebar.multiselect("Select Learning Mode", df["Learning_Mode"].unique(), default=df["Learning_Mode"].unique())
-df_filtered = df_filtered[df_filtered["Learning_Mode"].isin(modes)]
+# Year filter
+years = st.sidebar.multiselect("Select Year(s)", sorted(df["Year"].unique()), default=sorted(df["Year"].unique()))
+filtered_df = filtered_df[filtered_df["Year"].isin(years)]
 
-# Key Metrics
-st.header("📊 University Overview")
+# Branch filter
+branches = st.sidebar.multiselect("Select Branch(es)", df["Branch"].unique(), default=df["Branch"].unique())
+filtered_df = filtered_df[filtered_df["Branch"].isin(branches)]
+
+# Category filter
+categories = st.sidebar.multiselect("Select Category(ies)", df["Category"].unique(), default=df["Category"].unique())
+filtered_df = filtered_df[filtered_df["Category"].isin(categories)]
+
+# Top bar metrics
+st.header("📊 Sales Overview")
 
 col1, col2, col3, col4, col5 = st.columns(5)
 
-total_students = df_filtered["Total_Students"].sum()
-total_graduates = df_filtered["Graduating_Students"].sum()
-avg_completion = df_filtered["Completion_Rate"].mean()
-avg_satisfaction = df_filtered["Student_Satisfaction"].mean()
-total_revenue = df_finance[df_finance["Year"].isin(years)]["Total_Revenue"].sum()
-
 with col1:
-    st.metric("👨‍🎓 Total Students", f"{total_students:,}")
+    st.metric("💰 Total Sales", f"KES {total_sales:,.0f}")
 with col2:
-    st.metric("🎓 Graduates", f"{total_graduates:,}")
+    st.metric("📦 Total Quantity Sold", f"{total_quantity:,.0f} units")
 with col3:
-    st.metric("📈 Completion Rate", f"{avg_completion:.1f}%")
+    st.metric("💳 Avg Daily Sales", f"KES {avg_transaction:,.0f}")
 with col4:
-    st.metric("⭐ Satisfaction", f"{avg_satisfaction:.1f}/5.0")
+    st.metric("👥 Est. Customers", f"{total_customers:,.0f}")
 with col5:
-    st.metric("💰 Revenue", f"KES {total_revenue:.0f}M")
+    best_branch = filtered_df.groupby("Branch")["Sales_Amount"].sum().idxmax()
+    st.metric("🏆 Best Branch", best_branch)
 
 st.markdown("---")
 
 # Tabs
-tab1, tab2, tab3, tab4 = st.tabs(["📚 Academics", "🎓 Students", "💰 Finance", "📊 Insights"])
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    "📈 Sales Trends",
+    "🏪 Branch Performance",
+    "📦 Product Analysis",
+    "💳 Payment Analytics",
+    "📊 Category Insights",
+    "📋 Data & Export"
+])
 
-# TAB 1: Academics
+# ==============================
+# TAB 1: Sales Trends
+# ==============================
 with tab1:
-    st.subheader("Completion Rate by Department")
+    st.subheader("Sales Trends Over Time")
     
-    completion_data = df_filtered.groupby(["Year", "Department"])["Completion_Rate"].mean().reset_index()
+    # Monthly sales trend
+    monthly_sales = filtered_df.groupby(["Year", "Month"])["Sales_Amount"].sum().reset_index()
+    monthly_sales["Date"] = pd.to_datetime(monthly_sales["Year"].astype(str) + "-" + monthly_sales["Month"], format="%Y-%b")
+    monthly_sales = monthly_sales.sort_values("Date")
     
-    fig1 = px.bar(
-        completion_data,
-        x="Department",
-        y="Completion_Rate",
-        color="Year",
-        title="Completion Rate by Department (%)",
-        barmode="group"
+    fig1 = px.line(
+        monthly_sales,
+        x="Date",
+        y="Sales_Amount",
+        title="Monthly Sales Trend (KES)",
+        markers=True,
+        line_shape="spline"
     )
     st.plotly_chart(fig1, use_container_width=True)
-    
-    st.subheader("Learning Mode Distribution")
-    mode_data = df_filtered.groupby(["Year", "Learning_Mode"])["Total_Students"].sum().reset_index()
-    
-    fig2 = px.bar(
-        mode_data,
-        x="Year",
-        y="Total_Students",
-        color="Learning_Mode",
-        title="Physical vs Virtual vs Blended Learning",
-        barmode="stack"
-    )
-    st.plotly_chart(fig2, use_container_width=True)
-
-# TAB 2: Students
-with tab2:
-    st.subheader("Student Population by Department")
-    
-    student_data = df_filtered.groupby(["Year", "Department"])["Total_Students"].sum().reset_index()
-    
-    fig3 = px.bar(
-        student_data,
-        x="Department",
-        y="Total_Students",
-        color="Year",
-        title="Student Enrollment by Department",
-        barmode="group"
-    )
-    st.plotly_chart(fig3, use_container_width=True)
-    
-    st.subheader("Top 10 Courses by Graduates (2025)")
-    grad_data = df_filtered[df_filtered["Year"] == 2025].groupby("Department")["Graduating_Students"].sum().sort_values(ascending=False).head(10).reset_index()
-    
-    fig4 = px.bar(
-        grad_data,
-        x="Department",
-        y="Graduating_Students",
-        title="Departments with Highest Graduates (2025)",
-        color="Graduating_Students"
-    )
-    st.plotly_chart(fig4, use_container_width=True)
-    
-    st.subheader("Fastest Growing Departments")
-    growth_data = df_filtered.groupby(["Year", "Department"])["Total_Students"].sum().reset_index()
-    growth_2023 = growth_data[growth_data["Year"] == 2023].set_index("Department")["Total_Students"]
-    growth_2025 = growth_data[growth_data["Year"] == 2025].set_index("Department")["Total_Students"]
-    
-    growth_rate = ((growth_2025 - growth_2023) / growth_2023 * 100).sort_values(ascending=False).head(8).reset_index()
-    growth_rate.columns = ["Department", "Growth_Percent"]
-    
-    fig5 = px.bar(
-        growth_rate,
-        x="Department",
-        y="Growth_Percent",
-        title="Department Growth Rate (2023-2025)",
-        color="Growth_Percent"
-    )
-    st.plotly_chart(fig5, use_container_width=True)
-
-# TAB 3: Finance
-with tab3:
-    st.subheader("Revenue and Expenses Trend")
-    
-    finance_year = df_finance[df_finance["Year"].isin(years)]
-    finance_melt = finance_year.melt(id_vars=["Year"], value_vars=["Total_Revenue", "Total_Expenses", "Net_Profit"], var_name="Category", value_name="Amount")
-    
-    fig6 = px.line(
-        finance_melt,
-        x="Year",
-        y="Amount",
-        color="Category",
-        title="Revenue, Expenses & Profit (KES Millions)",
-        markers=True
-    )
-    st.plotly_chart(fig6, use_container_width=True)
     
     col1, col2 = st.columns(2)
     
     with col1:
-        # Revenue breakdown (latest year)
-        rev_2025 = finance_year[finance_year["Year"] == 2025].iloc[0]
-        revenue_data = pd.DataFrame({
-            "Source": ["Tuition", "Research", "Donations", "Other"],
-            "Amount": [rev_2025["Tuition_Revenue"], rev_2025["Research_Grants"], rev_2025["Donations"], rev_2025["Other_Income"]]
-        })
+        # Yearly comparison
+        yearly_sales = filtered_df.groupby("Year")["Sales_Amount"].sum().reset_index()
+        fig2 = px.bar(
+            yearly_sales,
+            x="Year",
+            y="Sales_Amount",
+            title="Yearly Total Sales",
+            text_auto=True,
+            color="Sales_Amount",
+            color_continuous_scale="Blues"
+        )
+        st.plotly_chart(fig2, use_container_width=True)
+    
+    with col2:
+        # Weekday vs Weekend
+        filtered_df["Week_Type"] = filtered_df["Is_Weekend"].map({True: "Weekend", False: "Weekday"})
+        weekday_sales = filtered_df.groupby("Week_Type")["Sales_Amount"].sum().reset_index()
+        fig3 = px.pie(
+            weekday_sales,
+            values="Sales_Amount",
+            names="Week_Type",
+            title="Weekday vs Weekend Sales",
+            hole=0.3,
+            color_discrete_map={"Weekday": "#3498db", "Weekend": "#e74c3c"}
+        )
+        st.plotly_chart(fig3, use_container_width=True)
+    
+    # Seasonal heatmap
+    st.subheader("Seasonal Sales Pattern")
+    pivot_sales = filtered_df.pivot_table(
+        values="Sales_Amount",
+        index="Year",
+        columns="Month",
+        aggfunc="sum",
+        fill_value=0
+    )
+    month_order = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    pivot_sales = pivot_sales[[m for m in month_order if m in pivot_sales.columns]]
+    
+    fig4 = px.imshow(
+        pivot_sales / 1000,
+        text_auto=True,
+        aspect="auto",
+        title="Sales Heatmap: Year vs Month (KES '000)",
+        labels={"x": "Month", "y": "Year", "color": "Sales (KES K)"},
+        color_continuous_scale="Viridis"
+    )
+    st.plotly_chart(fig4, use_container_width=True)
+
+# ==============================
+# TAB 2: Branch Performance
+# ==============================
+with tab2:
+    st.subheader("Branch Performance Analysis")
+    
+    # Sales by branch
+    branch_sales = filtered_df.groupby("Branch")["Sales_Amount"].sum().sort_values(ascending=False).reset_index()
+    
+    fig5 = px.bar(
+        branch_sales,
+        x="Branch",
+        y="Sales_Amount",
+        title="Total Sales by Branch (KES)",
+        color="Sales_Amount",
+        color_continuous_scale="Greens",
+        text_auto=True
+    )
+    st.plotly_chart(fig5, use_container_width=True)
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # Branch monthly trend
+        branch_trend = filtered_df.groupby(["Date", "Branch"])["Sales_Amount"].sum().reset_index()
+        top_branches = branch_sales.head(4)["Branch"].tolist()
+        branch_trend_top = branch_trend[branch_trend["Branch"].isin(top_branches)]
         
+        fig6 = px.line(
+            branch_trend_top,
+            x="Date",
+            y="Sales_Amount",
+            color="Branch",
+            title="Top Branches - Sales Trend",
+            markers=True
+        )
+        st.plotly_chart(fig6, use_container_width=True)
+    
+    with col2:
+        # Branch market share
         fig7 = px.pie(
-            revenue_data,
-            values="Amount",
-            names="Source",
-            title=f"Revenue Breakdown (2025)",
+            branch_sales,
+            values="Sales_Amount",
+            names="Branch",
+            title="Branch Market Share",
             hole=0.3
         )
         st.plotly_chart(fig7, use_container_width=True)
     
-    with col2:
-        # Expense breakdown
-        expense_data = pd.DataFrame({
-            "Expense": ["Salaries", "Infrastructure", "Operations"],
-            "Amount": [rev_2025["Salaries"], rev_2025["Infrastructure"], rev_2025["Operations"]]
-        })
+    # Branch performance metrics
+    st.subheader("Branch Performance Metrics (2025)")
+    branch_metrics = filtered_df[filtered_df["Year"] == 2025].groupby("Branch").agg({
+        "Sales_Amount": "sum",
+        "Quantity": "sum",
+        "Sales_Amount": "count"
+    }).round(0)
+    branch_metrics.columns = ["Total_Sales", "Total_Quantity", "Transaction_Count"]
+    branch_metrics["Avg_Transaction"] = branch_metrics["Total_Sales"] / branch_metrics["Transaction_Count"]
+    st.dataframe(branch_metrics, use_container_width=True)
+
+# ==============================
+# TAB 3: Product Analysis
+# ==============================
+with tab3:
+    st.subheader("Product Performance Analysis")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # Top products by sales
+        top_products = filtered_df.groupby("Product")["Sales_Amount"].sum().sort_values(ascending=False).head(15).reset_index()
         
-        fig8 = px.pie(
-            expense_data,
-            values="Amount",
-            names="Expense",
-            title=f"Expense Breakdown (2025)",
-            hole=0.3
+        fig8 = px.bar(
+            top_products,
+            x="Sales_Amount",
+            y="Product",
+            orientation="h",
+            title="Top 15 Products by Sales (KES)",
+            color="Sales_Amount",
+            color_continuous_scale="Blues"
         )
         st.plotly_chart(fig8, use_container_width=True)
     
-    # Financial metrics
-    st.subheader("Financial Health")
+    with col2:
+        # Top products by quantity
+        top_quantity = filtered_df.groupby("Product")["Quantity"].sum().sort_values(ascending=False).head(15).reset_index()
+        
+        fig9 = px.bar(
+            top_quantity,
+            x="Quantity",
+            y="Product",
+            orientation="h",
+            title="Top 15 Products by Quantity Sold",
+            color="Quantity",
+            color_continuous_scale="Greens"
+        )
+        st.plotly_chart(fig9, use_container_width=True)
+    
+    # Product trend for top sellers
+    st.subheader("Top 5 Products - Sales Trend")
+    top_5_products = filtered_df.groupby("Product")["Sales_Amount"].sum().nlargest(5).index
+    product_trend = filtered_df[filtered_df["Product"].isin(top_5_products)].groupby(["Date", "Product"])["Sales_Amount"].sum().reset_index()
+    
+    fig10 = px.line(
+        product_trend,
+        x="Date",
+        y="Sales_Amount",
+        color="Product",
+        title="Top 5 Products Sales Trends",
+        markers=True
+    )
+    st.plotly_chart(fig10, use_container_width=True)
+    
+    # Product performance table
+    st.subheader("Product Performance Summary")
+    product_summary = filtered_df.groupby("Product").agg({
+        "Sales_Amount": "sum",
+        "Quantity": "sum",
+        "Unit_Price": "mean"
+    }).round(2).sort_values("Sales_Amount", ascending=False)
+    product_summary.columns = ["Total_Sales_KES", "Total_Quantity", "Avg_Price"]
+    st.dataframe(product_summary.head(20), use_container_width=True)
+
+# ==============================
+# TAB 4: Payment Analytics
+# ==============================
+with tab4:
+    st.subheader("Payment Method Analysis")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # Payment distribution
+        payment_dist = filtered_df.groupby("Payment_Method")["Sales_Amount"].sum().reset_index()
+        
+        fig11 = px.pie(
+            payment_dist,
+            values="Sales_Amount",
+            names="Payment_Method",
+            title="Sales by Payment Method",
+            hole=0.3,
+            color_discrete_sequence=px.colors.qualitative.Set2
+        )
+        st.plotly_chart(fig11, use_container_width=True)
+    
+    with col2:
+        # Cash vs Digital trend
+        payment_trend = filtered_df.groupby(["Year", "Payment_Type"])["Sales_Amount"].sum().reset_index()
+        
+        fig12 = px.bar(
+            payment_trend,
+            x="Year",
+            y="Sales_Amount",
+            color="Payment_Type",
+            title="Cash vs Digital Payment Trend",
+            barmode="group",
+            color_discrete_map={"Cash": "#f39c12", "Digital": "#27ae60"}
+        )
+        st.plotly_chart(fig12, use_container_width=True)
+    
+    # Digital adoption over time
+    st.subheader("Digital Payment Adoption Rate")
+    digital_adoption = filtered_df.groupby("Year").apply(
+        lambda x: (x[x["Payment_Type"] == "Digital"]["Sales_Amount"].sum() / x["Sales_Amount"].sum()) * 100
+    ).reset_index(name="Digital_Adoption_Rate")
+    
+    fig13 = px.line(
+        digital_adoption,
+        x="Year",
+        y="Digital_Adoption_Rate",
+        title="Digital Payment Adoption Rate (%)",
+        markers=True,
+        line_shape="linear"
+    )
+    fig13.add_hline(y=50, line_dash="dash", line_color="red", annotation_text="50% Target")
+    st.plotly_chart(fig13, use_container_width=True)
+    
+    # Payment method by branch
+    st.subheader("Payment Methods by Branch")
+    branch_payment = filtered_df.groupby(["Branch", "Payment_Method"])["Sales_Amount"].sum().reset_index()
+    
+    fig14 = px.bar(
+        branch_payment,
+        x="Branch",
+        y="Sales_Amount",
+        color="Payment_Method",
+        title="Payment Method Distribution by Branch",
+        barmode="stack"
+    )
+    st.plotly_chart(fig14, use_container_width=True)
+
+# ==============================
+# TAB 5: Category Insights
+# ==============================
+with tab5:
+    st.subheader("Category Performance Analysis")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # Sales by category
+        category_sales = filtered_df.groupby("Category")["Sales_Amount"].sum().sort_values(ascending=False).reset_index()
+        
+        fig15 = px.bar(
+            category_sales,
+            x="Category",
+            y="Sales_Amount",
+            title="Total Sales by Category (KES)",
+            color="Sales_Amount",
+            color_continuous_scale="Reds",
+            text_auto=True
+        )
+        st.plotly_chart(fig15, use_container_width=True)
+    
+    with col2:
+        # Category market share
+        fig16 = px.pie(
+            category_sales.head(8),
+            values="Sales_Amount",
+            names="Category",
+            title="Top 8 Categories by Market Share",
+            hole=0.3
+        )
+        st.plotly_chart(fig16, use_container_width=True)
+    
+    # Category performance over time
+    st.subheader("Top Categories Performance Trend")
+    top_categories = category_sales.head(6)["Category"].tolist()
+    category_trend = filtered_df[filtered_df["Category"].isin(top_categories)].groupby(["Date", "Category"])["Sales_Amount"].sum().reset_index()
+    
+    fig17 = px.line(
+        category_trend,
+        x="Date",
+        y="Sales_Amount",
+        color="Category",
+        title="Top Categories - Sales Trends",
+        markers=True
+    )
+    st.plotly_chart(fig17, use_container_width=True)
+    
+    # Category by branch heatmap
+    st.subheader("Category Performance by Branch")
+    category_branch = filtered_df.groupby(["Branch", "Category"])["Sales_Amount"].sum().reset_index()
+    category_branch_pivot = category_branch.pivot(index="Branch", columns="Category", values="Sales_Amount").fillna(0)
+    
+    fig18 = px.imshow(
+        category_branch_pivot / 1000,
+        text_auto=True,
+        aspect="auto",
+        title="Sales Heatmap: Branch vs Category (KES '000)",
+        labels={"x": "Category", "y": "Branch", "color": "Sales (KES K)"},
+        color_continuous_scale="Blues"
+    )
+    st.plotly_chart(fig18, use_container_width=True)
+
+# ==============================
+# TAB 6: Data & Export
+# ==============================
+with tab6:
+    st.subheader("Sales Data Export")
+    
+    # Summary statistics
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("### Daily Summary")
+        daily_summary = filtered_df.groupby("Date").agg({
+            "Sales_Amount": "sum",
+            "Quantity": "sum",
+            "Transaction_Count": "count"
+        }).reset_index()
+        daily_summary.columns = ["Date", "Daily_Sales", "Daily_Quantity", "Transactions"]
+        st.dataframe(daily_summary.head(50), use_container_width=True)
+    
+    with col2:
+        st.markdown("### Category Summary")
+        category_summary = filtered_df.groupby("Category").agg({
+            "Sales_Amount": "sum",
+            "Quantity": "sum",
+            "Product": "nunique"
+        }).reset_index()
+        category_summary.columns = ["Category", "Total_Sales", "Total_Quantity", "Unique_Products"]
+        st.dataframe(category_summary, use_container_width=True)
+    
+    # Download buttons
+    st.markdown("---")
+    st.subheader("📎 Export Data")
+    
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        profit_margin = (rev_2025["Net_Profit"] / rev_2025["Total_Revenue"]) * 100
-        st.metric("Profit Margin", f"{profit_margin:.1f}%")
+        csv_full = filtered_df.to_csv(index=False).encode("utf-8")
+        st.download_button("📥 Download Full Data", csv_full, "liz_supermarket_full_data.csv", "text/csv")
     
     with col2:
-        rev_growth = ((finance_year[finance_year["Year"] == 2025]["Total_Revenue"].values[0] - 
-                       finance_year[finance_year["Year"] == 2023]["Total_Revenue"].values[0]) / 
-                      finance_year[finance_year["Year"] == 2023]["Total_Revenue"].values[0]) * 100
-        st.metric("Revenue Growth (3yr)", f"{rev_growth:.1f}%")
+        csv_daily = daily_summary.to_csv(index=False).encode("utf-8")
+        st.download_button("📥 Download Daily Summary", csv_daily, "liz_supermarket_daily_summary.csv", "text/csv")
     
     with col3:
-        expense_ratio = (rev_2025["Total_Expenses"] / rev_2025["Total_Revenue"]) * 100
-        st.metric("Expense Ratio", f"{expense_ratio:.1f}%")
-
-# TAB 4: Insights
-with tab4:
-    st.subheader("Key Institutional Insights")
+        csv_category = category_summary.to_csv(index=False).encode("utf-8")
+        st.download_button("📥 Download Category Summary", csv_category, "liz_supermarket_category_summary.csv", "text/csv")
     
-    # Department ranking
-    st.markdown("### 🏆 Department Performance Ranking (2025)")
-    dept_2025 = df_filtered[df_filtered["Year"] == 2025].groupby("Department").agg({
-        "Completion_Rate": "mean",
-        "Student_Satisfaction": "mean"
-    }).reset_index()
-    dept_2025 = dept_2025.sort_values("Completion_Rate", ascending=False)
-    
-    st.dataframe(dept_2025, use_container_width=True)
-    
-    # Top performing departments
-    st.markdown("### 🎯 Strategic Recommendations")
-    
-    recommendations = [
-        "**Digital Transformation** - Expand online learning programs to reach 40% of students by 2026",
-               "**Research Investment** - Increase research funding by 25% to boost publications and patents",
-        "**International Partnerships** - Double international student exchange programs",
-        "**Student Support** - Enhance support services for virtual learners to improve completion rates",
-        "**Faculty Development** - Invest in faculty training for blended learning methodologies"
-    ]
-    
-    for rec in recommendations:
-        st.info(rec)
-    
-    # Satisfaction vs Completion scatter
-    st.markdown("### 📊 Student Satisfaction vs Completion Rate")
-    scatter_data = df_filtered.groupby("Department")[["Completion_Rate", "Student_Satisfaction"]].mean().reset_index()
-    
-    fig9 = px.scatter(
-        scatter_data,
-        x="Completion_Rate",
-        y="Student_Satisfaction",
-        text="Department",
-        title="Department Performance: Satisfaction vs Completion",
-        size="Completion_Rate"
-    )
-    st.plotly_chart(fig9, use_container_width=True)
-
-# Data Download
-st.markdown("---")
-st.subheader("📎 Download Data")
-
-csv = df_filtered.to_csv(index=False).encode("utf-8")
-st.download_button("Download Data as CSV", csv, "nova_university_data.csv", "text/csv")
-
-with st.expander("View Raw Data"):
-    st.dataframe(df_filtered, use_container_width=True)
+    # Raw data view
+    with st.expander("View Raw Sales Data"):
+        st.dataframe(filtered_df.head(500), use_container_width=True)
 
 # Footer
 st.markdown("---")
-st.caption("📌 Nova University Dashboard | 2023-2025")
+st.caption("📌 Liz Supermarket Sales Dashboard | Data 2023-2025 | For inquiries: analytics@lizsupermarket.co.ke")
